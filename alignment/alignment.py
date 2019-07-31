@@ -272,94 +272,6 @@ class HSPVertex(HSP):
             self.best_prev = other
 
 
-class Transcript:
-    """Transcript combined from non-overlapping
-    sequential HSPs.
-
-    Attributes:
-        HSPs (list): a list of HSPVertex instances
-            representing a sequence of homologous
-            regions in query and subject sequences;
-        alignment (Alignment): corresponding
-            `Alignment` instance;
-        score (int, float): a transcript score
-            computed as HSPs scores minus gap
-            penalties (see `set_score` and
-            `HSP.distance` methods for definition).
-    """
-
-    def __init__(self, HSPs, alignment):
-        """Inits Transcript class.
-
-        Args:
-            HSPs (list): a list of HSPs representing the
-                transcript.
-            alignment (Alignment): corresponding `Alignment`
-                instance.
-        """
-        self.HSPs = HSPs
-        self.alignment = alignment
-        self.score = self.set_score()
-
-    def set_score(self):
-        """Calculates transcript score.
-
-        The transcript score is based on alignment
-        score and gap penalties defined by distance
-        function.
-
-        Returns:
-            Transcript score.
-        """
-        if self.HSPs:
-            score = self.HSPs[0].score
-        else:
-            return - float('inf')
-        for i in range(len(self.HSPs) - 1):
-            score -= self.HSPs[i].distance(self.HSPs[i + 1])
-        return score
-
-    def __str__(self):
-        header = "qstart\tqend\tsstart\tsend"
-        lines = ['\t'.join(str(_)
-                           for _ in [hsp.qstart,
-                                     hsp.qend,
-                                     hsp.sstart,
-                                     hsp.send])
-                 for hsp in self.HSPs]
-        return "\n".join([header] + lines)
-
-    def __repr__(self):
-        return f"Transcript({repr(self.HSPs)})"
-
-    def plot_transcript(self, color='red', link_color='blue'):
-        """Plots transcript with corresponding alignment.
-
-        First plots corresponding alignment in black, then
-        transcripts's HSPs with solid lines and connections
-        between them with dashed lines.
-
-        Args:
-            color (str): a color name to plot transcript's
-                HSPs;
-            link_color (str): a color name to plot connections
-                between transcript's HSPs.
-
-        Returns:
-            None
-        """
-        self.alignment.plot_alignment()
-        for hsp in self.HSPs:
-            plt.plot([hsp.qstart, hsp.qend],
-                     [hsp.sstart, hsp.send],
-                     color=color)
-        for i in range(len(self.HSPs) - 1):
-            plt.plot([self.HSPs[i].qend, self.HSPs[i + 1].qstart],
-                     [self.HSPs[i].send, self.HSPs[i + 1].sstart],
-                     color=link_color,
-                     linestyle='dashed')
-
-
 def is_float(string):
     """Checks whether a string represent a float number."""
     try:
@@ -823,3 +735,106 @@ class Alignment:
         oriented_groups = self._split_orientations()
         return {key: self._find_best_transcript(group, key)
                 for key, group in oriented_groups.items()}
+
+
+class Transcript:
+    """Transcript combined from non-overlapping
+    sequential HSPs.
+
+    Attributes:
+        HSPs (list): a list of HSPVertex instances
+            representing a sequence of homologous
+            regions in query and subject sequences;
+        alignment (Alignment): corresponding
+            `Alignment` instance;
+        score (int, float): a transcript score
+            computed as HSPs scores minus gap
+            penalties (see `set_score` and
+            `HSP.distance` methods for definition).
+    """
+
+    def __init__(self, HSPs, alignment):
+        """Inits Transcript class.
+
+        Args:
+            HSPs (list): a list of HSPs representing the
+                transcript.
+            alignment (Alignment): corresponding `Alignment`
+                instance.
+        """
+        self.HSPs = HSPs
+        self.alignment = alignment
+        self.score = self.set_score()
+
+    def set_score(self):
+        """Calculates transcript score.
+
+        The transcript score is based on alignment
+        score and gap penalties defined by distance
+        function.
+
+        Returns:
+            Transcript score.
+        """
+        if self.HSPs:
+            score = self.HSPs[0].score
+        else:
+            return - float('inf')
+        for i in range(len(self.HSPs) - 1):
+            score -= self.HSPs[i].distance(self.HSPs[i + 1])
+        return score
+
+    def __str__(self):
+        header = "qstart\tqend\tsstart\tsend"
+        lines = ['\t'.join(str(_)
+                           for _ in [hsp.qstart,
+                                     hsp.qend,
+                                     hsp.sstart,
+                                     hsp.send])
+                 for hsp in self.HSPs]
+        return "\n".join([header] + lines)
+
+    def __repr__(self):
+        return f"Transcript({repr(self.HSPs)})"
+
+    def to_dict(self):
+        keys = ['HSPs', 'alignment', 'score']
+        HSPs = [hsp.to_dict() for hsp in self.HSPs]
+        alignment = self.alignment.to_dict()
+        return dict(zip(keys, [HSPs,
+                               alignment,
+                               self.score]))
+
+    @staticmethod
+    def from_dict(dict_):
+        HSPs = [HSPVertex.from_dict(item)
+                for item in dict_.get('HSPs', [])]
+        alignment = Alignment.from_dict(dict_.get('alignment'))
+        return Transcript(HSPs, alignment)
+
+    def plot_transcript(self, color='red', link_color='blue'):
+        """Plots transcript with corresponding alignment.
+
+        First plots corresponding alignment in black, then
+        transcripts's HSPs with solid lines and connections
+        between them with dashed lines.
+
+        Args:
+            color (str): a color name to plot transcript's
+                HSPs;
+            link_color (str): a color name to plot connections
+                between transcript's HSPs.
+
+        Returns:
+            None
+        """
+        self.alignment.plot_alignment()
+        for hsp in self.HSPs:
+            plt.plot([hsp.qstart, hsp.qend],
+                     [hsp.sstart, hsp.send],
+                     color=color)
+        for i in range(len(self.HSPs) - 1):
+            plt.plot([self.HSPs[i].qend, self.HSPs[i + 1].qstart],
+                     [self.HSPs[i].send, self.HSPs[i + 1].sstart],
+                     color=link_color,
+                     linestyle='dashed')

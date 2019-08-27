@@ -713,11 +713,12 @@ class Alignment:
             for neighbour, weight in vertex.next_vertices:
                 neighbour._relax(vertex, weight)
         current_vertex = vertices[-1]
+        score = current_vertex.total_score
         best_hsps = list()
         while current_vertex.best_prev is not None:
             best_hsps.append(current_vertex)
             current_vertex = current_vertex.best_prev
-        return Transcript(best_hsps[1:][::-1], self)
+        return Transcript(best_hsps[1:][::-1], self, score)
 
     def get_best_transcripts(self):
         """Finds best transcripts.
@@ -753,7 +754,7 @@ class Transcript:
             `HSP.distance` methods for definition).
     """
 
-    def __init__(self, HSPs, alignment):
+    def __init__(self, HSPs, alignment, score=None):
         """Inits Transcript class.
 
         Args:
@@ -764,9 +765,10 @@ class Transcript:
         """
         self.HSPs = HSPs
         self.alignment = alignment
-        self.score = self.set_score()
-
-    def set_score(self):
+        self._score = score
+    
+    @property
+    def score(self):
         """Calculates transcript score.
 
         The transcript score is based on alignment
@@ -776,13 +778,15 @@ class Transcript:
         Returns:
             Transcript score.
         """
-        if self.HSPs:
-            score = self.HSPs[0].score
-        else:
-            return - float('inf')
-        for i in range(len(self.HSPs) - 1):
-            score -= self.HSPs[i].distance(self.HSPs[i + 1])
-        return score
+        if self._score is None:
+            if self.HSPs:
+                score = self.HSPs[0].score
+                for i in range(len(self.HSPs) - 1):
+                    score -= self.HSPs[i].distance(self.HSPs[i + 1])
+                self._score = score
+            else:
+                self._score = -float('inf')
+        return self._score
 
     def __str__(self):
         header = "qstart\tqend\tsstart\tsend"
